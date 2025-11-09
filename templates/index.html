@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ASL Alphabet Demo</title>
+    <style>
+      body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+      #video { border: 1px solid #ccc; }
+      #controls { margin-top: 8px; }
+      #prediction { font-size: 24px; margin-top: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>ASL Alphabet — Web Demo</h1>
+    <p id="status">Server model loaded: {{ 'yes' if model_exists else 'no' }}</p>
+
+    <video id="video" width="480" height="480" autoplay playsinline></video>
+    <canvas id="canvas" width="480" height="480" style="display:none"></canvas>
+
+    <div id="controls">
+      <button id="startBtn">Start</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <label for="interval">Interval (ms): </label>
+      <input id="interval" type="number" value="250" min="50" step="50" />
+    </div>
+
+    <div id="prediction">Prediction: <span id="label">-</span> (<span id="conf">-</span>)</div>
+
+    <script src="/static/main.js"></script>
+  </body>
+</html>
