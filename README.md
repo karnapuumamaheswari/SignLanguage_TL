@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Sign Language Alphabet Recognition using Transfer Learning
 
 This project demonstrates how to use Transfer Learning (MobileNetV2) to classify American Sign Language (ASL) alphabets (A-Z) and run real-time predictions using a webcam.
@@ -71,3 +72,6 @@ The script writes `classification_report.txt` and `confusion_matrix.csv` to the 
 - Reduce `batch_size` if you run out of memory.
 - For better accuracy, unfreeze some MobileNetV2 layers and fine-tune with a lower learning rate.
 
+=======
+# SignLanguage_TL
+>>>>>>> 00cc11126ba5c4173ebe363369d11acd46f195e2
