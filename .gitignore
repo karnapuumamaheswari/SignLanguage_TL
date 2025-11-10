@@ -13,3 +13,22 @@ __pycache__/
 *.env
 .DS_Store
 Thumbs.db
+
+# Models and large binaries
+models/
+*.h5
+*.hdf5
+
+# Editor/IDE
+.vscode/
+idea/
+
+# Test / coverage
+.pytest_cache/
+coverage.xml
+
+# Misc
+*.log
+*.sqlite3
+/.mypy_cache/
+/.cache/

@@ -1,32 +1,333 @@
-<!doctype html>
+<!-- <!doctype html>
 <html lang="en">
-  <head>
+    <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ASL Alphabet Demo</title>
     <style>
-      body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-      #video { border: 1px solid #ccc; }
+      :root { --accent: #0078d4; --muted: #666; }
+      body { font-family: Arial, sans-serif; text-align: center; margin: 20px; color: #222 }
+      .tabs { margin-bottom: 12px; }
+      .tab-btn { padding: 8px 14px; border: 1px solid #ccc; background: #f7f7f7; cursor: pointer; margin-right:6px; }
+      .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+      .tab { display: none; }
+      .tab.active { display: block; }
+      .media-area { position: relative; display:inline-block; }
+      #video { border-radius: 6px; border:1px solid #ddd; }
+      .overlay { position: absolute; left: 8px; top: 8px; padding: 6px 8px; background: rgba(0,0,0,0.6); color: #fff; border-radius: 4px; font-weight: bold; }
       #controls { margin-top: 8px; }
-      #prediction { font-size: 24px; margin-top: 10px; }
+      #prediction { font-size: 20px; margin-top: 10px; }
+      .drop-area { width: 480px; height: 240px; border: 2px dashed #ccc; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); border-radius: 6px; }
+      .drop-area.dragover { border-color: var(--accent); background: #f0f8ff; }
+      #preview { border-radius:6px; }
+      #history { max-width: 640px; margin: 0 auto; text-align: left; }
+      #historyList { list-style: none; padding-left: 8px; }
+      #pendingIndicator { margin-left:12px; }
+      .spinner { width:16px; height:16px; border-radius:50%; border:3px solid rgba(0,0,0,0.15); border-top-color:var(--accent); display:inline-block; animation: spin 1s linear infinite; vertical-align:middle; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .controls-row { display:flex; gap:12px; align-items:center; justify-content:center; }
     </style>
   </head>
   <body>
-    <h1>ASL Alphabet — Web Demo</h1>
+    <h1>ASL Alphabet — Interactive Demo</h1>
     <p id="status">Server model loaded: {{ 'yes' if model_exists else 'no' }}</p>
 
-    <video id="video" width="480" height="480" autoplay playsinline></video>
-    <canvas id="canvas" width="480" height="480" style="display:none"></canvas>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="camera">Camera</button>
+      <button class="tab-btn" data-tab="upload">Upload</button>
+    </div>
 
-    <div id="controls">
-      <button id="startBtn">Start</button>
-      <button id="stopBtn" disabled>Stop</button>
-      <label for="interval">Interval (ms): </label>
-      <input id="interval" type="number" value="250" min="50" step="50" />
+    <div id="tab-camera" class="tab active">
+      <div class="media-area">
+        <video id="video" width="480" height="480" autoplay playsinline></video>
+        <canvas id="canvas" width="480" height="480" style="display:none"></canvas>
+        <div id="overlay" class="overlay">-</div>
+      </div>
+
+      <div id="controls" class="controls-row">
+        <div>
+          <button id="startBtn">Start</button>
+          <button id="stopBtn" disabled>Stop</button>
+        </div>
+        <div>
+          <label for="interval">Interval (ms): </label>
+          <input id="interval" type="number" value="250" min="50" step="50" />
+        </div>
+        <div id="pendingIndicator" style="display:none"><span class="spinner"></span></div>
+      </div>
+    </div>
+
+    <div id="tab-upload" class="tab">
+      <div id="dropArea" class="drop-area">Drag & drop an image here, or choose a file</div>
+      <div style="margin-top:8px">
+        <input id="fileInput" type="file" accept="image/*" />
+        <button id="uploadBtn">Predict File</button>
+      </div>
+      <div style="margin-top:8px">
+        <img id="preview" src="" alt="preview" style="max-width:320px; border:1px solid #ddd; display:none" />
+      </div>
     </div>
 
     <div id="prediction">Prediction: <span id="label">-</span> (<span id="conf">-</span>)</div>
 
+    <div id="history" style="margin-top:14px">
+      <div style="display:flex; align-items:center; justify-content:space-between; max-width:640px; margin:0 auto;">
+        <h3 style="margin:0">Recent predictions</h3>
+        <button id="clearHistoryBtn">Clear history</button>
+      </div>
+      <ul id="historyList"></ul>
+    </div>
+
     <script src="/static/main.js"></script>
   </body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>🤟 ASL Alphabet Recognition</title>
+
+<style>
+  :root {
+    --accent: #4f46e5;       /* Vibrant Indigo */
+    --bg: #f8f9ff;           /* Light bluish background */
+    --card-bg: #fff;          /* Card background */
+    --text-dark: #222;        /* Primary text color */
+    --text-light: #666;       /* Secondary text color */
+    --shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: "Poppins", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text-dark);
+    text-align: center;
+  }
+
+  h1 {
+    font-size: 2rem;
+    margin-top: 20px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  p#status {
+    color: var(--text-light);
+    margin-bottom: 24px;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: inline-flex;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .tab-btn {
+    border: none;
+    padding: 10px 20px;
+    background: transparent;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .tab {
+    display: none;
+  }
+  .tab.active {
+    display: block;
+  }
+
+  /* Video + Upload Area */
+  .media-area {
+    position: relative;
+    display: inline-block;
+    background: var(--card-bg);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  #video, #canvas, #preview {
+    border-radius: 12px;
+    border: 2px solid #eee;
+  }
+
+  .overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+  }
+
+  /* Controls */
+  #controls {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: var(--accent);
+    color: white;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  button:hover {
+    background: #372f9c;
+    transform: translateY(-1px);
+  }
+
+  input[type="number"], input[type="file"] {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+  }
+
+  .drop-area {
+    width: 480px;
+    height: 240px;
+    border: 2px dashed #bbb;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+    border-radius: 10px;
+    transition: 0.3s;
+    margin-top: 16px;
+  }
+
+  .drop-area.dragover {
+    border-color: var(--accent);
+    background: #eef;
+  }
+
+  #prediction {
+    margin-top: 20px;
+    font-size: 1.4rem;
+    font-weight: bold;
+  }
+
+  #history {
+    max-width: 640px;
+    margin: 30px auto;
+    background: #fff;
+    box-shadow: var(--shadow);
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  #history h3 {
+    margin-top: 0;
+    color: var(--accent);
+  }
+
+  #historyList {
+    text-align: left;
+    list-style: none;
+    padding-left: 0;
+  }
+
+  #historyList li {
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 0.95rem;
+  }
+
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 3px solid rgba(0,0,0,0.15);
+    border-top-color: var(--accent);
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  footer {
+    margin: 40px 0 10px;
+    font-size: 0.85rem;
+    color: var(--text-light);
+  }
+</style>
+</head>
+
+<body>
+  <h1>🤟 ASL Alphabet Recognition</h1>
+  <p id="status">Server model loaded: <strong>{{ 'yes' if model_exists else 'no' }}</strong></p>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="camera">📸 Camera</button>
+    <button class="tab-btn" data-tab="upload">🖼️ Upload</button>
+  </div>
+
+  <!-- Camera Tab -->
+  <div id="tab-camera" class="tab active">
+    <div class="media-area">
+      <video id="video" width="480" height="480" autoplay playsinline></video>
+      <canvas id="canvas" width="480" height="480" style="display:none"></canvas>
+      <div id="overlay" class="overlay">Detecting...</div>
+    </div>
+
+    <div id="controls">
+      <button id="startBtn">Start</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <label>Interval (ms): <input id="interval" type="number" value="250" min="50" step="50" /></label>
+      <div id="pendingIndicator" style="display:none"><span class="spinner"></span></div>
+    </div>
+  </div>
+
+  <!-- Upload Tab -->
+  <div id="tab-upload" class="tab">
+    <div id="dropArea" class="drop-area">Drag & drop an image here</div>
+    <div style="margin-top:10px">
+      <input id="fileInput" type="file" accept="image/*" />
+      <button id="uploadBtn">Predict</button>
+    </div>
+    <div style="margin-top:10px">
+      <img id="preview" src="" alt="preview" style="max-width:320px; display:none;" />
+    </div>
+  </div>
+
+  <div id="prediction">Prediction: <span id="label">-</span> (<span id="conf">-</span>)</div>
+
+  <div id="history">
+    <h3>Recent Predictions</h3>
+    <button id="clearHistoryBtn">Clear</button>
+    <ul id="historyList"></ul>
+  </div>
+
+  <footer>Built with ❤️ using TensorFlow & Streamlit by Uma Maheswari</footer>
+
+  <script src="/static/main.js"></script>
+</body>
 </html>

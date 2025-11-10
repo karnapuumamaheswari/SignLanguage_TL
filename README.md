@@ -4,121 +4,81 @@
 This project demonstrates how to use Transfer Learning (MobileNetV2) to classify American Sign Language (ASL) alphabets (A-Z) and run real-time predictions using a webcam.
 
 ## Contents
-- `train.py` - Training script that builds and trains a MobileNetV2-based classifier.
+<!-- - `train.py` - Training script that builds and trains a MobileNetV2-based classifier.
 - `prepare_data.py` - Helper to split the Kaggle ASL dataset into `train` / `val` folders.
-- `realtime.py` - Real-time webcam demo using the trained model.
-- `requirements.txt` - Python dependencies.
+- `realtime.py` - Real-time webcam demo using the trained model. -->
 ## SignLanguage_TL — ASL Alphabet Recognition
 
 Inspiring people and machines to communicate.
 
-This project shows how to build a compact, practical ASL alphabet recognizer using transfer learning (MobileNetV2). It includes training utilities, evaluation scripts, a desktop demo, and a friendly browser-based demo so you can try real-time recognition in seconds.
+This repository demonstrates a compact ASL alphabet recognizer using MobileNetV2 transfer learning. It includes training utilities, evaluation scripts, a desktop OpenCV demo, a Flask-based web demo (legacy), and a new Streamlit app for easy deployment.
 
-Why this project exists
-- Make sign language technology approachable for hobbyists and researchers.
-- Provide a clear, practical example of transfer learning and real-time inference.
-- Offer both a desktop and browser demo so you can test locally or in the browser + server.
+Repository layout
+- `train.py` — Training script (MobileNetV2 base + custom head).
+- `prepare_data.py` — Split raw dataset into `data/train` and `data/val`.
+- `evaluate.py` — Run evaluation on the validation set.
+- `predict_webcam.py` / `realtime.py` — OpenCV desktop realtime demo.
+- `app.py` — Flask web server (legacy browser demo; you can keep or remove it).
+- `streamlit_app.py` — New Streamlit demo (image upload + optional webcam via `streamlit-webrtc`).
+- `templates/`, `static/` — original Flask frontend assets (can remain if you want both demos).
+- `models/` — store trained model(s) and `labels.json` (recommended: do not commit large models to git).
 
-Key highlights
-- Lightweight MobileNetV2 base with a small custom head for fast inference.
-- Browser demo that captures webcam frames and posts them to a Flask server for prediction.
-- Robust client: prevents overlapping requests to avoid server overload.
-- Server warms the model at startup to smooth the first request latency.
-
-Getting started (quick)
-1. Clone the repo and open it in PowerShell.
-2. Create a virtual environment (Python 3.10/3.11 recommended) and activate it:
-
-```powershell
+Quick start (recommended)
+1. Use Python 3.10 or 3.11 (TensorFlow wheels are best supported there).
+<!-- 
+<!-- ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-```
-
-3. Install dependencies:
-
-```powershell
 pip install -r requirements.txt
-```
+``` --> -->
 
-Prepare the dataset
-1. Download an ASL alphabet dataset (for example, the Kaggle "ASL Alphabet" dataset).
-2. Unzip so you have a folder with 26 class subfolders (A–Z).
-3. Run the helper to split into train/validation:
+2. Place your trained Keras model and labels next to each other:
 
-```powershell
-python prepare_data.py --src "C:\path\to\asl_alphabet_train" --dest .\data --val_split 0.2
-```
+- `models/sign_language_model.h5`
+- `models/labels.json`
 
-Train
-Train a model using transfer learning:
+Run Streamlit locally
 
 ```powershell
-python train.py --data_dir .\data --epochs 12 --batch_size 32 --output models\sign_language_model.h5
+streamlit run streamlit_app.py
 ```
 
-The training script saves the model and a `labels.json` mapping near the model (e.g. `models\labels.json`).
+Open the URL printed by Streamlit (usually `http://localhost:8501`). The Streamlit app supports:
+- Image upload prediction (works out of the box).
+- Optional webcam demo (in-browser) if you install `streamlit-webrtc`.
 
-Browser demo (fast test)
-1. Start the server (activate venv if needed):
+Deploying to Streamlit Cloud (simple)
+1. Push your repository to GitHub (include `streamlit_app.py` and `requirements.txt` at the repo root).
+2. Create a new app on share.streamlit.io and point it at your repo + branch. Set the entrypoint to `streamlit_app.py` (default is fine).
 
-<!-- ```powershell
-.\.venv\Scripts\Activate.ps1
-python app.py
-``` -->
+Notes for cloud deployment
+- Keep models reasonably small. Large `.h5` models may cause long startup times; consider saving a smaller/frozen/quantized model if needed.
+- Alternatively, host the model in cloud storage (S3, GCS) and download at startup.
 
-2. Open http://127.0.0.1:5000 in your browser. Click "Start" to grant webcam access and begin.
+Optional: Live webcam with `streamlit-webrtc`
+- Install `streamlit-webrtc` (already in `requirements.txt` as optional). The Streamlit app will automatically enable the webcam demo if the package is available.
+- Browser webcam support in Streamlit uses WebRTC and runs the model server-side. For heavy loads, consider running a dedicated inference server.
 
-Notes
-- The client sends center-cropped 224×224 JPEG frames to `/predict`. Default interval: 250 ms (~4 FPS).
-- The client will not send a new request until the previous one completes (prevents request pile-up).
-- The server warms the model on startup and uses `predict_on_batch` for single-batch inference.
+Folder / file recommendations for a Streamlit-friendly repo
+- Keep `streamlit_app.py` and `requirements.txt` at the repository root — Streamlit Cloud expects these.
+- Keep `models/` at the root (git-ignored) or add a `models/README.md` explaining how to obtain the model.
+- Keep `data/` and training scripts in the repo, but do not commit large datasets.
 
-Desktop demo
-Use the OpenCV-based demo if you prefer a local window:
+Run-time notes
+- Streamlit runs the app in a long-lived process. Loading and warming the model at import/startup (the app does this) avoids latency on the first request.
+- Make sure your Python runtime on the host supports TensorFlow; Streamlit Cloud runs standard Linux images and supports TF in many versions, but verify compatibility.
 
-```powershell
-python predict_webcam.py --model models\sign_language_model.h5 --labels models\labels.json
-```
+If you prefer, I can:
+- Add a small `models/README.md` that explains where to place/download models and how to convert to TF.js/SavedModel.
+- Replace the Flask demo entirely with Streamlit assets and remove `templates/`/`static/` to simplify the repo.
+- Add a small UI improvement: a visible "request pending" indicator and an FPS/latency readout in the Streamlit app.
 
-Evaluate
+Next steps I can take for you
+- Add the pending indicator and FPS readout inside `streamlit_app.py` (quick change).
+- Add a sample `Procfile` for other hosts (if you plan to deploy on Heroku-like environments).
+- Show how to host the model in cloud storage and download it at startup (helpful if model is large).
+
+---
+
+Enjoy — let me know which option you want next (pending indicator, remove Flask demo, or cloud model hosting).
 Produce a classification report and confusion matrix:
-
-```powershell
-python evaluate.py --model models\sign_language_model.h5 --labels models\labels.json --data_dir .\data\val --batch_size 32
-```
-
-Troubleshooting & tips
-- If you see browser console errors about missing elements, ensure the HTML template includes `static/main.js` once at the end of the body. The client script is wrapped in DOMContentLoaded to avoid early access errors.
-- If TensorFlow fails to install on your Python version, switch to Python 3.10/3.11 or create a conda environment.
-- Increase the UI interval (ms) if your machine or server is slow.
-
-What's next (ideas)
-- Add server-side rate limiting (Flask-Limiter) to protect the server when many clients connect.
-- Convert the model to TF.js so inference can run entirely in the browser.
-- Add a visual "request pending" indicator and an FPS/latency readout in the UI.
-
-Contributing
-- Contributions, issues and feature requests are welcome. Please open a GitHub issue or a pull request.
-
-License
-- This project is provided for learning and experimentation. Check `LICENSE` if present or add one for redistribution.
-
-Enjoy — build something that helps people! 🚀
-
-
-## Troubleshooting
-- Browser console errors about missing elements: ensure the UI is served from `app.py` and that `templates/index.html` includes `<script src="/static/main.js"></script>` once at the end of the body.
-- If `/predict` is slow or you see many overlapping requests in server logs, increase the client interval (ms) in the UI or use the stop/start controls. The client now avoids overlapping requests, which should reduce load.
-- If TensorFlow installation fails on Windows, verify your Python version (use 3.10/3.11) or use conda to create a compatible environment.
-
----
-
-## Next steps and optional improvements
-- Add server-side rate limiting (Flask-Limiter) to protect the server from many clients.
-- Convert the model to TF.js to run inference directly in the browser (removes server inference cost).
-- Expose a model-upload endpoint so non-developers can swap models without restarting the server.
-- Improve UI: show a pending/pulse indicator while waiting for `/predict`, display effective FPS, and show a small latency histogram.
-
----
-
-If you'd like, I can add a small "request pending" indicator to the web UI and lower the default interval, or add server-side rate limiting — tell me which and I'll implement it.
