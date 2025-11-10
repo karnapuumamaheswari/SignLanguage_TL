@@ -25,60 +25,134 @@ Repository layout
 
 Quick start (recommended)
 1. Use Python 3.10 or 3.11 (TensorFlow wheels are best supported there).
-<!-- 
-<!-- ```powershell
+ # Sign Language Alphabet Recognition (Transfer Learning)
+
+This repository implements an ASL (American Sign Language) alphabet recognizer using transfer learning (MobileNetV2). It includes scripts for training and evaluation, a desktop OpenCV demo, and two interfaces for quick interactive demos:
+
+- A combined Flask + Streamlit codebase (`app.py`) offering both a legacy Flask web demo and a Streamlit demo.
+- A modern, interactive browser demo (Flask frontend) with a tabbed Camera / Upload UI (drag-and-drop, preview, spinner, prediction history).
+
+Why this repo
+- Small, practical example of transfer learning (MobileNetV2 base + small classification head).
+- Multiple ways to demo: desktop webcam, browser camera, or image upload.
+- Simple deployment options: run locally, push to GitHub + Streamlit Cloud, or host the model separately and let the app download it at runtime.
+
+Repository structure (important files)
+- `train.py` — training script using MobileNetV2 as a base.
+- `prepare_data.py` — helper to split your dataset into `data/train` and `data/val`.
+- `evaluate.py` — produce classification reports and confusion matrices.
+- `predict_webcam.py` / `realtime.py` — OpenCV desktop realtime demo.
+- `app.py` — Combined entrypoint: exposes a Flask server (`/` and `/predict`) and Streamlit UI (callable via Streamlit). This is the primary entrypoint now.
+- `templates/`, `static/` — Flask frontend assets (the interactive tabbed UI lives here).
+- `models/` — models and `labels.json`. Keep this directory out of git for large models; use `MODEL_URL` to download at runtime instead.
+- `.gitignore` — updated to ignore `models/`, virtualenvs, caches and model files (`*.h5`).
+
+Requirements
+- This project uses TensorFlow/Keras, OpenCV, Flask, Streamlit (optional), and supporting packages. The `requirements.txt` in the repo includes the main deps (additionally `requests` is used by the runtime downloader).
+- TensorFlow compatibility: use Python 3.10 or 3.11 for easiest TensorFlow wheel compatibility.
+
+Quickstart — run the Flask demo locally (browser camera + upload UI)
+1. Create and activate a Python virtual environment (PowerShell):
+
+```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-``` --> -->
-
-2. Place your trained Keras model and labels next to each other:
-
-- `models/sign_language_model.h5`
-- `models/labels.json`
-
-Run Streamlit locally
-
-```powershell
-streamlit run streamlit_app.py
 ```
 
-Open the URL printed by Streamlit (usually `http://localhost:8501`). The Streamlit app supports:
-- Image upload prediction (works out of the box).
-- Optional webcam demo (in-browser) if you install `streamlit-webrtc`.
+2. Start the Flask server (serves the interactive web demo at http://127.0.0.1:5000):
 
-Deploying to Streamlit Cloud (simple)
-1. Push your repository to GitHub (include `streamlit_app.py` and `requirements.txt` at the repo root).
-2. Create a new app on share.streamlit.io and point it at your repo + branch. Set the entrypoint to `streamlit_app.py` (default is fine).
+```powershell
+python app.py --flask
+```
 
-Notes for cloud deployment
-- Keep models reasonably small. Large `.h5` models may cause long startup times; consider saving a smaller/frozen/quantized model if needed.
-- Alternatively, host the model in cloud storage (S3, GCS) and download at startup.
+3. Open your browser at http://127.0.0.1:5000
 
-Optional: Live webcam with `streamlit-webrtc`
-- Install `streamlit-webrtc` (already in `requirements.txt` as optional). The Streamlit app will automatically enable the webcam demo if the package is available.
-- Browser webcam support in Streamlit uses WebRTC and runs the model server-side. For heavy loads, consider running a dedicated inference server.
+Features of the Flask web UI
+- Tabbed Camera / Upload interface. Camera mode streams webcam frames and shows live overlay predictions. Upload mode supports drag-and-drop or file selection and shows a preview + one-shot predictions.
+- Pending indicator (spinner) while the server processes a frame.
+- Recent prediction history (last 10 predictions) and a Clear History button.
 
-Folder / file recommendations for a Streamlit-friendly repo
-- Keep `streamlit_app.py` and `requirements.txt` at the repository root — Streamlit Cloud expects these.
-- Keep `models/` at the root (git-ignored) or add a `models/README.md` explaining how to obtain the model.
-- Keep `data/` and training scripts in the repo, but do not commit large datasets.
+Quickstart — run the Streamlit demo
+The same `app.py` contains the Streamlit demo. To run it via Streamlit locally:
 
-Run-time notes
-- Streamlit runs the app in a long-lived process. Loading and warming the model at import/startup (the app does this) avoids latency on the first request.
-- Make sure your Python runtime on the host supports TensorFlow; Streamlit Cloud runs standard Linux images and supports TF in many versions, but verify compatibility.
+```powershell
+streamlit run app.py -- --streamlit
+```
 
-If you prefer, I can:
-- Add a small `models/README.md` that explains where to place/download models and how to convert to TF.js/SavedModel.
-- Replace the Flask demo entirely with Streamlit assets and remove `templates/`/`static/` to simplify the repo.
-- Add a small UI improvement: a visible "request pending" indicator and an FPS/latency readout in the Streamlit app.
+Streamlit mode provides an image uploader and optional webcam demo (requires `streamlit-webrtc`). Streamlit is convenient for sharing on Streamlit Cloud.
 
-Next steps I can take for you
-- Add the pending indicator and FPS readout inside `streamlit_app.py` (quick change).
-- Add a sample `Procfile` for other hosts (if you plan to deploy on Heroku-like environments).
-- Show how to host the model in cloud storage and download it at startup (helpful if model is large).
+Model availability and runtime downloader
+- By default the app expects a Keras model at `models/sign_language_model.h5` and labels at `models/labels.json`.
+- To avoid committing large models to git, you can host the model in cloud storage (S3, GCS, or any public URL) and set the environment variable `MODEL_URL` before starting the app. `app.py` will try to download the model at startup if `models/sign_language_model.h5` is missing.
+
+Example (PowerShell) to set MODEL_URL and start Streamlit:
+
+```powershell
+$env:MODEL_URL = 'https://your-bucket/path/sign_language_model.h5'
+streamlit run app.py -- --streamlit
+```
+
+Or start Flask with the same environment variable:
+
+```powershell
+$env:MODEL_URL = 'https://your-bucket/path/sign_language_model.h5'
+python app.py --flask
+```
+
+Notes on hosting the model
+- Recommended: host models on cloud storage and keep `models/` in `.gitignore`.
+- Optionally use Git LFS for models, but Streamlit Cloud and some CI systems have limits — prefer external hosting.
+
+Troubleshooting
+- "Failed to fetch" in the browser when calling `/predict`:
+	- Ensure the Flask server is running (see the terminal where you started `python app.py --flask`).
+	- Check the Flask terminal for tracebacks. Common causes: missing TensorFlow, missing model file, or an exception when decoding images.
+	- If your page is served from a different origin, CORS may be required. For quick local testing you can enable CORS in `app.py` (install `flask-cors` and call `CORS(flask_app)` after creating the app).
+	- If serving over HTTPS, avoid mixing insecure HTTP `http://127.0.0.1:5000` requests from a secure page (browser will block mixed content).
+
+- If the model fails to load at startup:
+	- Confirm the files are at `models/sign_language_model.h5` and `models/labels.json`.
+	- Check Python/TensorFlow compatibility (Python 3.10/3.11 recommended).
+
+Development notes and recommended next steps
+- Add your dataset to `data/` and run `prepare_data.py` to create `data/train` and `data/val`.
+- Train the model with `train.py` and save to `models/sign_language_model.h5`.
+- Evaluate using `evaluate.py`.
+- The repo includes both the Flask frontend and Streamlit demo. If you only want Streamlit, you can delete `templates/` and `static/` and make `app.py` the Streamlit entrypoint.
+
+Deployment (Streamlit Cloud)
+1. Push your repository to GitHub.
+2. On share.streamlit.io create a new app and link it to your repo & branch.
+3. Set the environment variable `MODEL_URL` in the Streamlit app settings (or upload the model to your repo via Git LFS, though external hosting is preferred).
+
+Useful commands
+
+Start Flask (dev):
+```powershell
+python app.py --flask
+```
+
+Start Streamlit locally:
+```powershell
+streamlit run app.py -- --streamlit
+```
+
+Add CORS (quick local test):
+```powershell
+pip install flask-cors
+```
+Then in `app.py` add:
+```python
+from flask_cors import CORS
+flask_app = Flask(...)
+CORS(flask_app)
+```
+
+Contact / next steps I can help with
+- I can add a small `models/README.md` explaining how to host models on S3/GCS and generate a secure URL.
+- I can add additional UI polish (Bootstrap/CSS), improve mobile support, or add server-side batching for faster throughput.
 
 ---
 
-Enjoy — let me know which option you want next (pending indicator, remove Flask demo, or cloud model hosting).
-Produce a classification report and confusion matrix:
+Thanks — try running `python app.py --flask` and open http://127.0.0.1:5000 to see the interactive Camera/Upload demo.
